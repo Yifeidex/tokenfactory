@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Your Own Token</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        input { margin: 10px 0; padding: 10px; width: 300px; }
+        button { padding: 10px 15px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        #message { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Create Your Own Token</h1>
+    <form id="tokenForm">
+        <input type="text" id="tokenName" placeholder="Token Name" required />
+        <input type="text" id="tokenSymbol" placeholder="Token Symbol" required />
+        <input type="number" id="totalSupply" placeholder="Total Supply" required />
+        <button type="submit">Create Token</button>
+    </form>
+    <div id="message"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.5.2.umd.min.js"></script>
+    <script>
+        const tokenFactoryAddress = "0xf3755df97b4dde9547391cbe03f138c354da3ab6"; // Replace with your deployed TokenFactory address
+        const tokenFactoryABI = [
+            {
+                "inputs": [
+                    { "internalType": "string", "name": "name", "type": "string" },
+                    { "internalType": "string", "name": "symbol", "type": "string" },
+                    { "internalType": "uint256", "name": "totalSupply", "type": "uint256" }
+                ],
+                "name": "createToken",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    { "indexed": true, "internalType": "address", "name": "tokenAddress", "type": "address" },
+                    { "indexed": false, "internalType": "string", "name": "name", "type": "string" },
+                    { "indexed": false, "internalType": "string", "name": "symbol", "type": "string" }
+                ],
+                "name": "TokenCreated",
+                "type": "event"
+            }
+        ];
+
+        async function createToken(event) {
+            event.preventDefault();
+
+            const name = document.getElementById("tokenName").value;
+            const symbol = document.getElementById("tokenSymbol").value;
+            const totalSupply = document.getElementById("totalSupply").value;
+            const messageDiv = document.getElementById("message");
+
+            if (typeof window.ethereum !== 'undefined') {
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+
+                try {
+                    await provider.send("eth_requestAccounts", []);
+                    const userAddress = await signer.getAddress();
+
+                    const tokenFactoryContract = new ethers.Contract(tokenFactoryAddress, tokenFactoryABI, signer);
+                    const tx = await tokenFactoryContract.createToken(name, symbol, totalSupply);
+                    await tx.wait(); // Wait for the transaction to be mined
+                    messageDiv.innerHTML = `Token created! Transaction hash: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank">${tx.hash}</a>`;
+                } catch (error) {
+                    console.error(error);
+                    messageDiv.innerText = "An error occurred: " + error.message;
+                }
+            } else {
+                alert("Please install MetaMask!");
+            }
+        }
+
+        document.getElementById("tokenForm").addEventListener("submit", createToken);
+    </script>
+</body>
+</html>
