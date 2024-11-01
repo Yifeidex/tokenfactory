@@ -1,28 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Your Own Token</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wallet Connection and Token Creation</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        input { margin: 10px 0; padding: 10px; width: 300px; }
-        button { padding: 10px 15px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #45a049; }
-        #message { margin-top: 20px; }
+        body {
+            font-family: "Inter", sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #202020;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 400px;
+            width: 100%;
+            padding: 20px;
+            background: #303030;
+            border-radius: 20px;
+        }
+        button, input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 20px;
+            border: 1px solid #b728f0;
+            background-color: #2172e5;
+            color: #fff;
+            font-size: 1rem;
+        }
+        input {
+            background-color: #ded3d37d;
+            color: #fff;
+        }
+        button:hover {
+            background-color: #1a5bad;
+        }
+        .hidden {
+            display: none;
+        }
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #message {
+            margin-top: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <h1>Create Your Own Token</h1>
-    <form id="tokenForm">
-        <input type="text" id="tokenName" placeholder="Token Name" required />
-        <input type="text" id="tokenSymbol" placeholder="Token Symbol" required />
-        <input type="number" id="totalSupply" placeholder="Total Supply" required />
-        <button type="submit">Create Token</button>
-    </form>
-    <div id="message"></div>
+    <div class="container">
+        <h1>Wallet Connection</h1>
+        <button id="connectButton">Connect Wallet</button>
+        <div id="walletInfo" class="hidden">
+            <p>Address: <span id="walletAddress"></span></p>
+            <p>Balance: <span id="walletBalance"></span> ETH</p>
+        </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.5.2.umd.min.js"></script>
+        <h2>Create Your ERC-20 Token</h2>
+        <input id="tokenName" type="text" placeholder="Token Name" required />
+        <input id="tokenSymbol" type="text" placeholder="Token Symbol" required />
+        <input id="totalSupply" type="number" placeholder="Total Supply" required />
+        <button id="createTokenButton">Create Token</button>
+        <div id="message"></div>
+    </div>
+
     <script>
         const tokenFactoryAddress = "0xf3755df97b4dde9547391cbe03f138c354da3ab6"; // Replace with your deployed TokenFactory address
         const tokenFactoryABI = [
@@ -49,22 +97,39 @@
             }
         ];
 
-        async function createToken(event) {
-            event.preventDefault();
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const connectButton = document.getElementById("connectButton");
+        const walletInfo = document.getElementById("walletInfo");
+        const walletAddress = document.getElementById("walletAddress");
+        const walletBalance = document.getElementById("walletBalance");
+        const messageDiv = document.getElementById("message");
 
+        connectButton.onclick = async () => {
+            try {
+                await provider.send("eth_requestAccounts", []);
+                const signer = provider.getSigner();
+                const address = await signer.getAddress();
+                const balance = await provider.getBalance(address);
+
+                walletAddress.innerText = address;
+                walletBalance.innerText = ethers.utils.formatEther(balance);
+                walletInfo.classList.remove("hidden");
+                connectButton.classList.add("hidden");
+            } catch (err) {
+                console.error(err);
+                alert("Failed to connect wallet.");
+            }
+        };
+
+        document.getElementById("createTokenButton").onclick = async () => {
             const name = document.getElementById("tokenName").value;
             const symbol = document.getElementById("tokenSymbol").value;
             const totalSupply = document.getElementById("totalSupply").value;
-            const messageDiv = document.getElementById("message");
 
             if (typeof window.ethereum !== 'undefined') {
-                const provider = new ethers.providers.Web3Provider(window.ethereum);
                 const signer = provider.getSigner();
 
                 try {
-                    await provider.send("eth_requestAccounts", []);
-                    const userAddress = await signer.getAddress();
-
                     const tokenFactoryContract = new ethers.Contract(tokenFactoryAddress, tokenFactoryABI, signer);
                     const tx = await tokenFactoryContract.createToken(name, symbol, totalSupply);
                     await tx.wait(); // Wait for the transaction to be mined
@@ -76,9 +141,8 @@
             } else {
                 alert("Please install MetaMask!");
             }
-        }
-
-        document.getElementById("tokenForm").addEventListener("submit", createToken);
+        };
     </script>
 </body>
 </html>
+
